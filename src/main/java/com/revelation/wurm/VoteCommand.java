@@ -1,4 +1,4 @@
-package com.genesis.wurm.server;
+package com.revelation.wurm;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -18,19 +18,21 @@ import com.wurmonline.server.economy.MonetaryConstants;
 import java.util.logging.Logger;
 
 final class VoteCommand {
+
 	public static boolean onPlayerMessage(Communicator communicator, String message) throws Exception {
 		Player performer = communicator.getPlayer();
 		if (message.startsWith("/vote")) {
 			communicator.sendNormalServerMessage("Attempting to claim vote");
 			try {
 				HttpsURLConnection connection = (HttpsURLConnection) new URL(
-						"https://wurm-unlimited.com/api/?action=post&object=votes&element=claim&key=8syGWbTe1ktNoMMghDuSa7DhsbD8RWylVZ&steamid="+performer.getSteamId()
+						"https://wurm-unlimited.com/api/?action=post&object=votes&element=claim&key=" + VoteReward.APIKEY + "&steamid="+performer.getSteamId()
 				).openConnection();
 				connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.95 Safari/537.11");
 				connection.setSSLSocketFactory(createTrustAllSocketFactory());
 
 				int responseCode = connection.getResponseCode();
 				if (responseCode != 200) throw new IOException(performer.getName() + " " + performer.getSteamId() + " attempted to vote and could not connect."+ responseCode);
+				VoteReward.logInfo("https://wurm-unlimited.com/api/?action=post&object=votes&element=claim&key=" + VoteReward.APIKEY + "&steamid="+performer.getSteamId());
 
 				InputStream in = connection.getInputStream();
 
@@ -45,17 +47,19 @@ final class VoteCommand {
 				String result = new String(stringBuffer.toByteArray(), StandardCharsets.UTF_8);
 				if (result.equals("1")) {
 					try {
-						performer.addMoney(MonetaryConstants.COIN_COPPER * 17);
-						performer.getCommunicator().sendAlertServerMessage("Thank you for supporting Genesis! 17 copper coins have been added to your bank.");
+						performer.addMoney(MonetaryConstants.COIN_IRON * VoteReward.rewardAmt);
+						performer.getCommunicator().sendAlertServerMessage(VoteReward.rewardMsg);
 						VoteReward.logInfo(performer.getName() + " " + performer.getSteamId() + " claimed their vote reward successfully.");
+						VoteReward.logInfo("https://wurm-unlimited.com/api/?action=post&object=votes&element=claim&key=" + VoteReward.APIKEY + "&steamid="+performer.getSteamId());
 					} catch (IOException ex) {
 						performer.getCommunicator().sendAlertServerMessage("Failed to add reward. Please submit a support ticket.");
 						ex.printStackTrace();
 					}
 				}
 				else {
-					performer.getCommunicator().sendAlertServerMessage("You have either claimed your reward for this SteamID or you have not voted today. You can vote for Genesis at http://wurm-unlimited.com/server/7372/vote/");
+					performer.getCommunicator().sendAlertServerMessage(VoteReward.claimedMsg);
 					VoteReward.logInfo(performer.getName() + " " + performer.getSteamId() + " attempted to claim vote but was unsuccessful.");
+					VoteReward.logInfo("https://wurm-unlimited.com/api/?action=post&object=votes&element=claim&key=" + VoteReward.APIKEY + "&steamid="+performer.getSteamId());
 				}
 				in.close();
 			} catch (IOException ex) {
